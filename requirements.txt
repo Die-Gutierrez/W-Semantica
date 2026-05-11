@@ -1,0 +1,12 @@
+# Módulo 1: Ingestión
+paho-mqtt==1.6.1
+SQLAlchemy==2.0.25
+
+# Módulo 2: Semántica
+rdflib==7.0.0
+requests==2.31.0
+
+# Módulo 3: API
+fastapi==0.109.0
+uvicorn==0.27.0
+python-dotenv==1.0.0
