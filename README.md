@@ -13,6 +13,7 @@ Dentro de la carpeta `/requisitos` encontrarás:
 
 En la carpeta tambien se encuentran los requisitos de software del proyecto:
 
+- [Python 3.12.6](https://www.python.org/downloads/release/python-3126/)
 - mosquito-2.1.2
 - fuseki-4.6.0-distribution.zip
 - OpenJDK21
