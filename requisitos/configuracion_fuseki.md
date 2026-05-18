@@ -7,7 +7,10 @@ Para que el proyecto funcione, Fuseki debe estar configurado como nuestro "Tripl
 - Descomprime el archivo `.zip` en una carpeta como `C:\fuseki`.
 - Asegúrate de tener Java instalado (`java -version` en la terminal).
 
-En el caso se tenga problemas con la versiòn de java descargar es instalar el siguiente: https://release-assets.githubusercontent.com/github-production-release-asset/602574963/c6fdcf73-1544-4c6d-9246-83b23d2456ba?sp=r&sv=2018-11-09&sr=b&spr=https&se=2026-05-11T15%3A08%3A01Z&rscd=attachment%3B+filename%3DOpenJDK21U-jdk_x64_windows_hotspot_21.0.3_9.msi&rsct=application%2Foctet-stream&skoid=96c2d410-5711-43a1-aedd-ab1947aa7ab0&sktid=398a6654-997b-47e9-b12b-9515b896b4de&skt=2026-05-11T14%3A07%3A05Z&ske=2026-05-11T15%3A08%3A01Z&sks=b&skv=2018-11-09&sig=yiatfVDWyEJpCImwRYnhEWgNhSrjTgkZajzaw3dP7kA%3D&jwt=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmVsZWFzZS1hc3NldHMuZ2l0aHVidXNlcmNvbnRlbnQuY29tIiwia2V5Ijoia2V5MSIsImV4cCI6MTc3ODUxMjkzOSwibmJmIjoxNzc4NTA5MzM5LCJwYXRoIjoicmVsZWFzZWFzc2V0cHJvZHVjdGlvbi5ibG9iLmNvcmUud2luZG93cy5uZXQifQ.fZVxCKI1-iEvsNkQepAZ_5W7QNw_0taj_s1xSjLbMpA&response-content-disposition=attachment%3B%20filename%3DOpenJDK21U-jdk_x64_windows_hotspot_21.0.3_9.msi&response-content-type=application%2Foctet-stream
+> [!TIP]
+> Si tienes problemas con la versión de Java o no la tienes instalada, descarga e instala **OpenJDK 21 (LTS)** utilizando uno de los siguientes enlaces oficiales y permanentes:
+>
+> - **[Página oficial de descargas de Adoptium](https://adoptium.net/temurin/releases/?version=21)** (Selecciona Windows y el formato `.msi` para una instalación sencilla).
 
 ## 2. Inicio del Servidor
 
