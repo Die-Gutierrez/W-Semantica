@@ -1,0 +1,927 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Diagrama de Flujo de Datos IoT Geoespacial - UNJBG</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --bg-primary: #0b0f19;
+            --bg-secondary: #131c31;
+            --bg-card: rgba(30, 41, 67, 0.4);
+            --border-color: rgba(255, 255, 255, 0.08);
+            --text-main: #f3f4f6;
+            --text-muted: #9ca3af;
+            
+            --color-sensor: #ff6b6b;
+            --color-mqtt: #38bdf8;
+            --color-sqlite: #fbbf24;
+            --color-rdf: #a78bfa;
+            --color-fuseki: #34d399;
+            --color-api: #f472b6;
+            --color-geojson: #60a5fa;
+            
+            --shadow-premium: 0 10px 30px -10px rgba(0,0,0,0.5);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            background-color: var(--bg-primary);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow-x: hidden;
+            background-image: 
+                radial-gradient(at 0% 0%, rgba(56, 189, 248, 0.08) 0px, transparent 50%),
+                radial-gradient(at 100% 100%, rgba(167, 139, 250, 0.08) 0px, transparent 50%);
+        }
+
+        header {
+            padding: 2.5rem 2rem 1.5rem 2rem;
+            text-align: center;
+            border-bottom: 1px solid var(--border-color);
+            background: rgba(11, 15, 25, 0.8);
+            backdrop-filter: blur(12px);
+            z-index: 10;
+        }
+
+        header h1 {
+            font-size: 2.2rem;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+            background: linear-gradient(135deg, #38bdf8, #a78bfa);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 0.5rem;
+        }
+
+        header p {
+            color: var(--text-muted);
+            font-size: 1.1rem;
+            font-weight: 300;
+        }
+
+        .container {
+            display: flex;
+            flex: 1;
+            padding: 2.5rem;
+            gap: 3rem;
+            max-width: 1800px;
+            margin: 0 auto;
+            width: 100%;
+            z-index: 2;
+        }
+
+        /* Lienzo del Diagrama */
+        .diagram-viewport {
+            flex: 2.2;
+            background-color: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 24px;
+            box-shadow: var(--shadow-premium);
+            position: relative;
+            padding: 5rem 3rem;
+            min-height: 980px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            align-items: center;
+            overflow: visible;
+        }
+
+        /* SVG para líneas conectores */
+        .svg-connections {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .flow-line {
+            fill: none;
+            stroke-width: 3;
+            stroke-linecap: round;
+            filter: drop-shadow(0 2px 8px rgba(0,0,0,0.5));
+            transition: stroke-width 0.3s;
+        }
+
+        /* Animación de pulsos de datos */
+        .flow-pulse {
+            fill: none;
+            stroke-width: 4;
+            stroke-linecap: round;
+            stroke-dasharray: 10 30;
+            animation: pulse-flow 6s linear infinite;
+        }
+
+        @keyframes pulse-flow {
+            to {
+                stroke-dashoffset: -200;
+            }
+        }
+
+        /* Capas horizontales */
+        .layer {
+            display: flex;
+            justify-content: space-around;
+            width: 100%;
+            padding: 0 4rem;
+            gap: 4rem;
+            z-index: 2;
+        }
+
+        /* Tarjeta de Nodo */
+        .node-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            backdrop-filter: blur(8px);
+            border-radius: 16px;
+            padding: 1.2rem;
+            width: 260px;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            box-shadow: 0 4px 20px -5px rgba(0,0,0,0.3);
+        }
+
+        .node-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            border-radius: 4px 4px 0 0;
+        }
+
+        .node-card:hover {
+            transform: translateY(-6px);
+            border-color: rgba(255, 255, 255, 0.2);
+            box-shadow: 0 12px 30px -5px rgba(0, 0, 0, 0.6);
+        }
+
+        /* Colores específicos de capa */
+        .node-card.sensor::before { background-color: var(--color-sensor); }
+        .node-card.sensor:hover { box-shadow: 0 12px 30px -10px rgba(255, 107, 107, 0.3); }
+
+        .node-card.broker::before { background-color: var(--color-mqtt); }
+        .node-card.broker:hover { box-shadow: 0 12px 30px -10px rgba(56, 189, 248, 0.3); }
+
+        .node-card.sqlite::before { background-color: var(--color-sqlite); }
+        .node-card.sqlite:hover { box-shadow: 0 12px 30px -10px rgba(251, 191, 36, 0.3); }
+
+        .node-card.etl::before { background-color: var(--color-rdf); }
+        .node-card.etl:hover { box-shadow: 0 12px 30px -10px rgba(167, 139, 250, 0.3); }
+
+        .node-card.fuseki::before { background-color: var(--color-fuseki); }
+        .node-card.fuseki:hover { box-shadow: 0 12px 30px -10px rgba(52, 211, 153, 0.3); }
+
+        .node-card.api::before { background-color: var(--color-api); }
+        .node-card.api:hover { box-shadow: 0 12px 30px -10px rgba(244, 114, 182, 0.3); }
+
+        .node-card.map::before { background-color: var(--color-geojson); }
+        .node-card.map:hover { box-shadow: 0 12px 30px -10px rgba(96, 165, 250, 0.3); }
+
+        /* Contenido de la Tarjeta */
+        .node-header {
+            display: flex;
+            align-items: center;
+            gap: 0.8rem;
+            margin-bottom: 0.8rem;
+        }
+
+        .node-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .node-title {
+            font-size: 1.05rem;
+            font-weight: 600;
+        }
+
+        .node-subtitle {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 0.6rem;
+        }
+
+        .node-tech {
+            display: inline-block;
+            font-size: 0.75rem;
+            background: rgba(255, 255, 255, 0.06);
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            color: var(--text-muted);
+            margin-top: 0.4rem;
+        }
+
+        .node-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.3rem;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.72rem;
+            padding: 0.25rem 0.5rem;
+            border-radius: 6px;
+            margin-bottom: 0.5rem;
+            width: fit-content;
+            font-weight: 500;
+        }
+
+        .node-badge.folder {
+            color: #fbbf24;
+            background: rgba(251, 191, 36, 0.08);
+            border: 1px solid rgba(251, 191, 36, 0.15);
+        }
+
+        .node-badge.file {
+            color: #38bdf8;
+            background: rgba(56, 189, 248, 0.08);
+            border: 1px solid rgba(56, 189, 248, 0.15);
+        }
+
+        /* Detalle Panel */
+        .detail-panel {
+            flex: 1;
+            background-color: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            padding: 2rem;
+            display: flex;
+            flex-direction: column;
+            box-shadow: var(--shadow-premium);
+            min-width: 380px;
+        }
+
+        .panel-placeholder {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            text-align: center;
+            color: var(--text-muted);
+        }
+
+        .panel-placeholder i {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            opacity: 0.4;
+        }
+
+        .detail-content {
+            display: none;
+            height: 100%;
+            animation: fadeIn 0.4s ease forwards;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .detail-tag {
+            display: inline-block;
+            padding: 0.3rem 0.8rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            margin-bottom: 1rem;
+        }
+
+        .detail-title {
+            font-size: 1.6rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+
+        .detail-file {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.85rem;
+            background: rgba(255, 255, 255, 0.05);
+            padding: 0.4rem 0.8rem;
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+            display: inline-block;
+            margin-bottom: 1.2rem;
+            color: #38bdf8;
+        }
+
+        .detail-desc {
+            color: var(--text-muted);
+            font-size: 0.95rem;
+            line-height: 1.5;
+            margin-bottom: 1.5rem;
+        }
+
+        .data-format-box {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 12px;
+            padding: 1.2rem;
+            border: 1px solid var(--border-color);
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .data-format-box h4 {
+            font-size: 0.9rem;
+            color: var(--text-main);
+            margin-bottom: 0.8rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .code-snippet {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.8rem;
+            color: #a78bfa;
+            white-space: pre-wrap;
+            background: transparent;
+            border: none;
+            overflow-y: auto;
+            max-height: 250px;
+            flex: 1;
+        }
+
+        /* Acciones de exportación */
+        .actions-bar {
+            display: flex;
+            justify-content: center;
+            padding: 1.5rem;
+            gap: 1rem;
+            border-top: 1px solid var(--border-color);
+            background: rgba(11, 15, 25, 0.6);
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #1d4ed8, #2563eb);
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 10px;
+            font-weight: 500;
+            font-family: inherit;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(37, 99, 235, 0.5);
+        }
+
+        .btn-secondary {
+            background: rgba(255,255,255,0.06);
+            border: 1px solid var(--border-color);
+            color: var(--text-main);
+            box-shadow: none;
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255,255,255,0.12);
+            box-shadow: none;
+        }
+
+        /* Etiquetas informativas del flujo en las conexiones */
+        .connection-label {
+            position: absolute;
+            font-size: 0.7rem;
+            background: rgba(15, 23, 42, 0.85);
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            border: 1px solid var(--border-color);
+            color: var(--text-muted);
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+            z-index: 3;
+            transition: all 0.3s;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>Flujo de Datos Semántico y Geoespacial</h1>
+        <p>Modelo de Tubería de Datos IoT - Universidad Nacional Jorge Basadre Grohmann</p>
+    </header>
+
+    <div class="container">
+        
+        <!-- Viewport del diagrama de flujo -->
+        <div class="diagram-viewport" id="diagramViewport">
+            
+            <svg class="svg-connections" id="svgCanvas">
+                <!-- Las líneas se dibujan dinámicamente mediante JavaScript para asegurar que conecten perfectamente con los elementos div -->
+                <path id="path1" class="flow-line" stroke="url(#gradient-sensor-mqtt)" />
+                <path id="pulse1" class="flow-pulse" stroke="#38bdf8" />
+                
+                <path id="path2" class="flow-line" stroke="url(#gradient-mqtt-sqlite)" />
+                <path id="pulse2" class="flow-pulse" stroke="#fbbf24" />
+                
+                <path id="path3" class="flow-line" stroke="url(#gradient-sqlite-etl)" />
+                <path id="pulse3" class="flow-pulse" stroke="#a78bfa" />
+                
+                <path id="path4" class="flow-line" stroke="url(#gradient-etl-fuseki)" />
+                <path id="pulse4" class="flow-pulse" stroke="#34d399" />
+                
+                <path id="path5" class="flow-line" stroke="url(#gradient-fuseki-api)" />
+                <path id="pulse5" class="flow-pulse" stroke="#f472b6" />
+                
+                <path id="path6" class="flow-line" stroke="url(#gradient-api-map)" />
+                <path id="pulse6" class="flow-pulse" stroke="#60a5fa" />
+
+                <!-- Gradientes lineales para las tuberías -->
+                <defs>
+                    <linearGradient id="gradient-sensor-mqtt" x1="0%" y1="0%" x2="0%" y2="100%">
+                        <stop offset="0%" stop-color="#ff6b6b" />
+                        <stop offset="100%" stop-color="#38bdf8" />
+                    </linearGradient>
+                    <linearGradient id="gradient-mqtt-sqlite" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stop-color="#38bdf8" />
+                        <stop offset="100%" stop-color="#fbbf24" />
+                    </linearGradient>
+                    <linearGradient id="gradient-sqlite-etl" x1="0%" y1="100%" x2="0%" y2="0%">
+                        <stop offset="0%" stop-color="#fbbf24" />
+                        <stop offset="100%" stop-color="#a78bfa" />
+                    </linearGradient>
+                    <linearGradient id="gradient-etl-fuseki" x1="0%" y1="0%" x2="100%" y2="0%">
+                        <stop offset="0%" stop-color="#a78bfa" />
+                        <stop offset="100%" stop-color="#34d399" />
+                    </linearGradient>
+                    <linearGradient id="gradient-fuseki-api" x1="0%" y1="0%" x2="0%" y2="100%">
+                        <stop offset="0%" stop-color="#34d399" />
+                        <stop offset="100%" stop-color="#f472b6" />
+                    </linearGradient>
+                    <linearGradient id="gradient-api-map" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stop-color="#f472b6" />
+                        <stop offset="100%" stop-color="#60a5fa" />
+                    </linearGradient>
+                </defs>
+            </svg>
+
+            <!-- Etiquetas flotantes para las transiciones -->
+            <div id="lbl-trans1" class="connection-label">MQTT Pub (JSON)</div>
+            <div id="lbl-trans2" class="connection-label">SQLAlchemy Insert</div>
+            <div id="lbl-trans3" class="connection-label">ETL Query (Python)</div>
+            <div id="lbl-trans4" class="connection-label">SPARQL Insert Data</div>
+            <div id="lbl-trans5" class="connection-label">SPARQL Query</div>
+            <div id="lbl-trans6" class="connection-label">GeoJSON Rest</div>
+
+            <!-- Fila 1: Captura e Ingestión -->
+            <div class="layer">
+                <div class="node-card sensor" id="node-sensor" onclick="selectNode('sensor')">
+                    <div class="node-subtitle">Etapa 1: Captura</div>
+                    <div class="node-badge file">📄 test_simulation.py</div>
+                    <div class="node-header">
+                        <div class="node-icon" style="color: var(--color-sensor);">📡</div>
+                        <div class="node-title">Nodos de Sensores</div>
+                    </div>
+                    <p style="font-size: 0.85rem; color: var(--text-muted);">ESP32 Físico / Simulación en Tacna</p>
+                    <div class="node-tech">test_simulation.py</div>
+                </div>
+
+                <div class="node-card broker" id="node-broker" onclick="selectNode('broker')">
+                    <div class="node-subtitle">Infraestructura</div>
+                    <div class="node-badge file">⚙️ Servicio Broker</div>
+                    <div class="node-header">
+                        <div class="node-icon" style="color: var(--color-mqtt);">🔄</div>
+                        <div class="node-title">Broker MQTT</div>
+                    </div>
+                    <p style="font-size: 0.85rem; color: var(--text-muted);">Enrutador ligero de mensajes en vivo</p>
+                    <div class="node-tech">Eclipse Mosquitto (1883)</div>
+                </div>
+
+                <div class="node-card sqlite" id="node-sqlite" onclick="selectNode('sqlite')">
+                    <div class="node-subtitle">Etapa 2: Persistencia</div>
+                    <div class="node-badge folder">📁 modulo1_ingestion/</div>
+                    <div class="node-header">
+                        <div class="node-icon" style="color: var(--color-sqlite);">💾</div>
+                        <div class="node-title">Base de Datos</div>
+                    </div>
+                    <p style="font-size: 0.85rem; color: var(--text-muted);">Almacenamiento relacional rápido</p>
+                    <div class="node-tech">SQLAlchemy + SQLite</div>
+                </div>
+            </div>
+
+            <!-- Fila 2: El Núcleo Semántico -->
+            <div class="layer">
+                <div class="node-card etl" id="node-etl" onclick="selectNode('etl')">
+                    <div class="node-subtitle">Etapa 3: ETL Semántico</div>
+                    <div class="node-badge folder">📁 modulo2_semantica/</div>
+                    <div class="node-header">
+                        <div class="node-icon" style="color: var(--color-rdf);">🧠</div>
+                        <div class="node-title">ETL Mapper RDF</div>
+                    </div>
+                    <p style="font-size: 0.85rem; color: var(--text-muted);">Mapeo de registros a SOSA + GeoSPARQL</p>
+                    <div class="node-tech">rdflib + python (ETL)</div>
+                </div>
+
+                <div class="node-card fuseki" id="node-fuseki" onclick="selectNode('fuseki')">
+                    <div class="node-subtitle">Triplestore</div>
+                    <div class="node-badge file">🏛️ Dataset: iot_sensores</div>
+                    <div class="node-header">
+                        <div class="node-icon" style="color: var(--color-fuseki);">🏛️</div>
+                        <div class="node-title">Apache Jena Fuseki</div>
+                    </div>
+                    <p style="font-size: 0.85rem; color: var(--text-muted);">Base de datos de grafos de conocimiento</p>
+                    <div class="node-tech">Fuseki Server (3030)</div>
+                </div>
+            </div>
+
+            <!-- Fila 3: API & Presentación -->
+            <div class="layer">
+                <div class="node-card api" id="node-api" onclick="selectNode('api')">
+                    <div class="node-subtitle">Etapa 4: Exposición</div>
+                    <div class="node-badge folder">📁 modulo3_api/</div>
+                    <div class="node-header">
+                        <div class="node-icon" style="color: var(--color-api);">🔌</div>
+                        <div class="node-title">API Geoespacial</div>
+                    </div>
+                    <p style="font-size: 0.85rem; color: var(--text-muted);">Traductor SPARQL a GeoJSON REST</p>
+                    <div class="node-tech">FastAPI (Puerto 8000)</div>
+                </div>
+
+                <div class="node-card map" id="node-map" onclick="selectNode('map')">
+                    <div class="node-subtitle">Visualización</div>
+                    <div class="node-badge file">🗺️ Mapa Web / QGIS</div>
+                    <div class="node-header">
+                        <div class="node-icon" style="color: var(--color-geojson);">🗺️</div>
+                        <div class="node-title">Consumidor Web</div>
+                    </div>
+                    <p style="font-size: 0.85rem; color: var(--text-muted);">Mapas interactivos en tiempo real</p>
+                    <div class="node-tech">Leaflet.js / QGIS</div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Panel de Detalle Derecho -->
+        <div class="detail-panel">
+            <div class="panel-placeholder" id="panelPlaceholder">
+                <span>⚡</span>
+                <h3>Visualizador de Datos Interactivo</h3>
+                <p style="margin-top: 0.5rem; font-size: 0.9rem;">Haz clic sobre cualquiera de los nodos del diagrama para inspeccionar su código, su comportamiento y el formato exacto de los datos en esa etapa.</p>
+            </div>
+
+            <div class="detail-content" id="detailContent">
+                <span class="detail-tag" id="detTag">Etapa</span>
+                <h3 class="detail-title" id="detTitle">Título de la Etapa</h3>
+                <div class="detail-file" id="detFile">archivo_fuente.py</div>
+                <p class="detail-desc" id="detDesc">Explicación del proceso y su relevancia técnica dentro del flujo de la Web Semántica.</p>
+                
+                <div class="data-format-box">
+                    <h4 id="detBoxTitle">📄 Formato de los datos que fluyen</h4>
+                    <pre class="code-snippet"><code id="detCode">Code block...</code></pre>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Barra de Acciones inferior -->
+    <div class="actions-bar">
+        <button class="btn btn-secondary" onclick="window.print()">
+            🖨️ Imprimir Diagrama para Informe
+        </button>
+        <button class="btn" onclick="reiniciarFlujo()">
+            ⚡ Reiniciar Simulación de Flujo
+        </button>
+    </div>
+
+    <script>
+        // Datos detallados de cada nodo para el panel interactivo
+        const nodeDetails = {
+            sensor: {
+                tag: 'Etapa 1: Captura de Datos',
+                color: 'var(--color-sensor)',
+                title: 'Simulación del Sensor ESP32',
+                file: 'test_simulation.py',
+                desc: 'Aquí se originan los datos. En un entorno real, varios ESP32 miden variables ambientales. Como no siempre hay hardware disponible, el simulador genera mediciones de movimiento realistas y les asigna coordenadas exactas correspondientes a zonas del mapa de Tacna (Zonas X, Y, Z).',
+                boxTitle: '📄 Payload JSON enviado vía MQTT',
+                code: `{
+  "sensor_id": "ESP32_01",
+  "zona": "X",
+  "valor": 42.87,
+  "latitud": -18.013,
+  "longitud": -70.251
+}`
+            },
+            broker: {
+                tag: 'Infraestructura MQTT',
+                color: 'var(--color-mqtt)',
+                title: 'Mosquitto Broker',
+                file: 'C:\\Program Files\\mosquitto\\mosquitto.conf',
+                desc: 'Es el centro neurálgico de la mensajería ligera. Mosquitto recibe los payloads JSON de los sensores de forma instantánea a través del protocolo MQTT (tópico: unjbg/sensores/movimiento) y los retransmite en microsegundos a cualquier servicio que esté suscrito.',
+                boxTitle: '📡 Tránsito MQTT (Tópico activo)',
+                code: `Tópico: unjbg/sensores/movimiento
+Protocolo: MQTT v3.1.1
+Puerto: 1883
+QoS: 0 (At most once)`
+            },
+            sqlite: {
+                tag: 'Etapa 2: Almacenamiento Relacional',
+                color: 'var(--color-sqlite)',
+                title: 'Base de Datos de Ingestión',
+                file: 'modulo1_ingestion/database.py & subscriber.py',
+                desc: 'El suscriptor se ejecuta de forma permanente en segundo plano. Escucha a Mosquitto, recibe el JSON, lo valida sintácticamente y, utilizando el ORM de SQLAlchemy, inserta los datos de forma estructurada en la tabla "sensor_data" de la base relacional SQLite (iot_data.db). Esto asegura la persistencia física.',
+                boxTitle: '💾 Registro insertado en la tabla SQlite',
+                code: `Table: sensor_data
++----+-----------+------+-------+---------------------+---------+---------+
+| id | sensor_id | zona | valor | timestamp           | latitud | longitud|
++----+-----------+------+-------+---------------------+---------+---------+
+| 1  | ESP32_01  | X    | 42.87 | 2026-05-18 14:10:00 | -18.013 | -70.251 |
++----+-----------+------+-------+---------------------+---------+---------+`
+            },
+            etl: {
+                tag: 'Etapa 3: Mapeo de Grafo Semántico',
+                color: 'var(--color-rdf)',
+                title: 'ETL Mapper Semántico',
+                file: 'modulo2_semantica/etl_mapper.py',
+                desc: 'Este es el núcleo semántico del proyecto. Utilizando la librería "rdflib", toma los datos planos de SQLite y los convierte en Conocimiento estructurado en base a dos estándares internacionales: SOSA (para observaciones físicas) y GeoSPARQL (para geometrías y ubicaciones espaciales en WKT).',
+                boxTitle: '🧠 Tripletas Semánticas RDF generadas (Turtle)',
+                code: `@prefix sosa: <http://www.w3.org/ns/sosa/> .
+@prefix geo: <http://www.opengis.net/ont/geosparql#> .
+@prefix ex: <http://example.org/unjbg/> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+ex:observation/1 a sosa:Observation ;
+    sosa:madeBySensor ex:sensor/ESP32_01 ;
+    sosa:hasSimpleResult "42.87"^^xsd:float ;
+    sosa:resultTime "2026-05-18T14:10:00"^^xsd:dateTime ;
+    sosa:hasFeatureOfInterest ex:zona/X .
+
+ex:zona/X a geo:Feature ;
+    geo:hasGeometry ex:geometry/1 .
+
+ex:geometry/1 geo:asWKT "POINT(-70.251 -18.013)"^^geo:wktLiteral .`
+            },
+            fuseki: {
+                tag: 'Almacenamiento de Grafos (Triplestore)',
+                color: 'var(--color-fuseki)',
+                title: 'Apache Jena Fuseki',
+                file: 'C:\\fuseki\\fuseki-server.bat',
+                desc: 'El Triplestore oficial que almacena el grafo de conocimiento unificado del sistema en la base de datos nativa TDB2. Recibe las tripletas a través del ETL en formato RDF mediante una petición HTTP SPARQL Update (INSERT DATA), quedando disponibles para consultas complejas.',
+                boxTitle: '🏛️ Consulta SPARQL admitida por Fuseki',
+                code: `PREFIX sosa: <http://www.w3.org/ns/sosa/>
+PREFIX geo: <http://www.opengis.net/ont/geosparql#>
+
+SELECT ?sensor ?valor ?wkt
+WHERE {
+  ?obs a sosa:Observation ;
+       sosa:madeBySensor ?sensor ;
+       sosa:hasSimpleResult ?valor ;
+       sosa:hasFeatureOfInterest ?zona .
+  ?zona geo:hasGeometry ?geom .
+  ?geom geo:asWKT ?wkt .
+}`
+            },
+            api: {
+                tag: 'Etapa 4: Exposición del API',
+                color: 'var(--color-api)',
+                title: 'API REST Geoespacial',
+                file: 'modulo3_api/main.py',
+                desc: 'El servidor web FastAPI expone el endpoint "/api/v1/sensors/geojson". Cuando un cliente lo consulta, la API realiza internamente la consulta SPARQL a Apache Jena Fuseki, extrae las coordenadas geográficas del formato WKT ("POINT(...)") y las traduce al estándar GeoJSON que entienden los mapas de consumo.',
+                boxTitle: '🔌 GeoJSON final expuesto por la API REST',
+                code: `{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-70.251, -18.013]
+      },
+      "properties": {
+        "sensor": "http://example.org/unjbg/sensor/ESP32_01",
+        "valor": 42.87,
+        "zona": "X"
+      }
+    }
+  ]
+}`
+            },
+            map: {
+                tag: 'Consumo y Presentación',
+                color: 'var(--color-geojson)',
+                title: 'Visor Geoespacial Final',
+                file: 'Cliente Web / GIS (QGIS, Leaflet)',
+                desc: 'El final de la tubería. Un frontend interactivo o una herramienta GIS estándar consume el API REST en formato GeoJSON para pintar en tiempo real los sensores con sus respectivos marcadores sobre el mapa de Tacna, permitiendo ver de manera gráfica y comprensible las lecturas espaciales de los sensores.',
+                boxTitle: '🗺️ Interpretación final del mapa',
+                code: `Visualización Geográfica:
+- Marcador 1 en Zona X (-18.013, -70.251) con Lectura: 42.87
+- Marcador 2 en Zona Y (-18.015, -70.255) con Lectura: 78.10
+- Marcador 3 en Zona Z (-18.010, -70.248) con Lectura: 12.00`
+            }
+        };
+
+        // Función para cambiar de nodo activo y mostrar el detalle correspondiente
+        function selectNode(nodeKey) {
+            // Deseleccionar tarjetas activas
+            document.querySelectorAll('.node-card').forEach(card => {
+                card.style.transform = 'none';
+                card.style.borderColor = 'var(--border-color)';
+            });
+
+            // Seleccionar la tarjeta actual
+            const selectedCard = document.getElementById(`node-${nodeKey}`);
+            selectedCard.style.transform = 'translateY(-6px) scale(1.02)';
+            selectedCard.style.borderColor = 'rgba(255, 255, 255, 0.4)';
+
+            const details = nodeDetails[nodeKey];
+            
+            // Ocultar placeholder
+            document.getElementById('panelPlaceholder').style.display = 'none';
+            
+            // Llenar contenido
+            const contentDiv = document.getElementById('detailContent');
+            contentDiv.style.display = 'block';
+            
+            const tag = document.getElementById('detTag');
+            tag.innerText = details.tag;
+            tag.style.backgroundColor = details.color;
+            tag.style.color = nodeKey === 'sqlite' || nodeKey === 'broker' ? '#000' : '#fff';
+            
+            document.getElementById('detTitle').innerText = details.title;
+            document.getElementById('detFile').innerText = details.file;
+            document.getElementById('detDesc').innerText = details.desc;
+            document.getElementById('detBoxTitle').innerHTML = details.boxTitle;
+            
+            const codeElem = document.getElementById('detCode');
+            codeElem.innerText = details.code;
+            codeElem.style.color = details.color;
+            
+            // Resaltar las conexiones involucradas en el flujo
+            resaltarTuberias(nodeKey);
+        }
+
+        function resaltarTuberias(nodeKey) {
+            // Reiniciar todos
+            for (let i = 1; i <= 6; i++) {
+                document.getElementById(`path${i}`).style.strokeWidth = 3;
+                document.getElementById(`pulse${i}`).style.strokeWidth = 4;
+            }
+
+            // Resaltar según el paso seleccionado
+            if (nodeKey === 'sensor' || nodeKey === 'broker') {
+                document.getElementById('path1').style.strokeWidth = 6;
+                document.getElementById('pulse1').style.strokeWidth = 8;
+            }
+            if (nodeKey === 'sqlite') {
+                document.getElementById('path2').style.strokeWidth = 6;
+                document.getElementById('pulse2').style.strokeWidth = 8;
+            }
+            if (nodeKey === 'etl') {
+                document.getElementById('path3').style.strokeWidth = 6;
+                document.getElementById('pulse3').style.strokeWidth = 8;
+                document.getElementById('path4').style.strokeWidth = 6;
+                document.getElementById('pulse4').style.strokeWidth = 8;
+            }
+            if (nodeKey === 'fuseki') {
+                document.getElementById('path4').style.strokeWidth = 6;
+                document.getElementById('pulse4').style.strokeWidth = 8;
+            }
+            if (nodeKey === 'api') {
+                document.getElementById('path5').style.strokeWidth = 6;
+                document.getElementById('pulse5').style.strokeWidth = 8;
+                document.getElementById('path6').style.strokeWidth = 6;
+                document.getElementById('pulse6').style.strokeWidth = 8;
+            }
+            if (nodeKey === 'map') {
+                document.getElementById('path6').style.strokeWidth = 6;
+                document.getElementById('pulse6').style.strokeWidth = 8;
+            }
+        }
+
+        // Dibuja las tuberías/curvas SVG para conectar los divs perfectamente
+        function actualizarLineasConexion() {
+            const getCoords = (id) => {
+                const el = document.getElementById(id);
+                const rect = el.getBoundingClientRect();
+                const viewportRect = document.getElementById('diagramViewport').getBoundingClientRect();
+                return {
+                    x: rect.left - viewportRect.left + rect.width / 2,
+                    y: rect.top - viewportRect.top + rect.height / 2,
+                    top: rect.top - viewportRect.top,
+                    bottom: rect.bottom - viewportRect.top,
+                    left: rect.left - viewportRect.left,
+                    right: rect.right - viewportRect.left,
+                    width: rect.width,
+                    height: rect.height
+                };
+            };
+
+            const sensor = getCoords('node-sensor');
+            const broker = getCoords('node-broker');
+            const sqlite = getCoords('node-sqlite');
+            const etl = getCoords('node-etl');
+            const fuseki = getCoords('node-fuseki');
+            const api = getCoords('node-api');
+            const map = getCoords('node-map');
+
+            // 1. Sensor -> Broker (Vertical)
+            const d1 = `M ${sensor.x} ${sensor.bottom} L ${broker.x} ${broker.top}`;
+            document.getElementById('path1').setAttribute('d', d1);
+            document.getElementById('pulse1').setAttribute('d', d1);
+            
+            // Ubicar etiqueta 1
+            ubicarEtiqueta('lbl-trans1', (sensor.x + broker.x)/2, (sensor.bottom + broker.top)/2);
+
+            // 2. Broker -> SQLite (Diagonal)
+            const d2 = `M ${broker.right} ${broker.y} C ${broker.right + 50} ${broker.y}, ${sqlite.left - 50} ${sqlite.y}, ${sqlite.left} ${sqlite.y}`;
+            document.getElementById('path2').setAttribute('d', d2);
+            document.getElementById('pulse2').setAttribute('d', d2);
+            
+            // Ubicar etiqueta 2
+            ubicarEtiqueta('lbl-trans2', (broker.right + sqlite.left)/2, (broker.y + sqlite.y)/2);
+
+            // 3. SQLite -> ETL (Diagonal abajo a la izquierda)
+            const d3 = `M ${sqlite.x} ${sqlite.bottom} C ${sqlite.x} ${sqlite.bottom + 50}, ${etl.x} ${etl.top - 50}, ${etl.x} ${etl.top}`;
+            document.getElementById('path3').setAttribute('d', d3);
+            document.getElementById('pulse3').setAttribute('d', d3);
+            
+            // Ubicar etiqueta 3
+            ubicarEtiqueta('lbl-trans3', (sqlite.x + etl.x)/2, (sqlite.bottom + etl.top)/2);
+
+            // 4. ETL -> Fuseki (Horizontal)
+            const d4 = `M ${etl.right} ${etl.y} L ${fuseki.left} ${fuseki.y}`;
+            document.getElementById('path4').setAttribute('d', d4);
+            document.getElementById('pulse4').setAttribute('d', d4);
+            
+            // Ubicar etiqueta 4
+            ubicarEtiqueta('lbl-trans4', (etl.right + fuseki.left)/2, (etl.y + fuseki.y)/2 - 10);
+
+            // 5. Fuseki -> API (Vertical)
+            const d5 = `M ${fuseki.x} ${fuseki.bottom} L ${api.x} ${api.top}`;
+            document.getElementById('path5').setAttribute('d', d5);
+            document.getElementById('pulse5').setAttribute('d', d5);
+            
+            // Ubicar etiqueta 5
+            ubicarEtiqueta('lbl-trans5', (fuseki.x + api.x)/2 - 20, (fuseki.bottom + api.top)/2);
+
+            // 6. API -> Map (Diagonal)
+            const d6 = `M ${api.right} ${api.y} C ${api.right + 50} ${api.y}, ${map.left - 50} ${map.y}, ${map.left} ${map.y}`;
+            document.getElementById('path6').setAttribute('d', d6);
+            document.getElementById('pulse6').setAttribute('d', d6);
+            
+            // Ubicar etiqueta 6
+            ubicarEtiqueta('lbl-trans6', (api.right + map.left)/2, (api.y + map.y)/2);
+        }
+
+        function ubicarEtiqueta(id, x, y) {
+            const el = document.getElementById(id);
+            el.style.left = `${x}px`;
+            el.style.top = `${y}px`;
+        }
+
+        function reiniciarFlujo() {
+            // Relanza las animaciones CSS de los pulsos para ver la simulación
+            for (let i = 1; i <= 6; i++) {
+                const el = document.getElementById(`pulse${i}`);
+                el.style.animation = 'none';
+                el.offsetHeight; // Truco de reflow para reiniciar la animación
+                el.style.animation = 'pulse-flow 6s linear infinite';
+            }
+            alert("¡Flujo de simulación reiniciado! Verás los pulsos de datos fluyendo por las tuberías.");
+        }
+
+        // Actualizar posiciones de líneas en la carga inicial y al cambiar de tamaño
+        window.addEventListener('load', () => {
+            actualizarLineasConexion();
+            // Selecciona la primera etapa por defecto
+            selectNode('sensor');
+        });
+        window.addEventListener('resize', actualizarLineasConexion);
+    </script>
+</body>
+</html>
