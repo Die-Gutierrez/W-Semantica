@@ -1,3 +1,4 @@
+# pyrefly: ignore [missing-import]
 import paho.mqtt.client as mqtt
 import json
 import sys

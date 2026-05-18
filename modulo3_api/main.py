@@ -1,3 +1,4 @@
+# pyrefly: ignore [missing-import]
 from fastapi import FastAPI, HTTPException
 import requests
 import sys
@@ -75,5 +76,6 @@ def get_sensors_geojson():
         raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
+    # pyrefly: ignore [missing-import]
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
