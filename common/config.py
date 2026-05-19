@@ -20,6 +20,6 @@ FUSEKI_UPDATE_URL = f"{FUSEKI_BASE_URL}/{FUSEKI_DATASET}/update"
 FUSEKI_QUERY_URL = f"{FUSEKI_BASE_URL}/{FUSEKI_DATASET}/query"
 
 # Configuración de Ontologías (Namespaces)
-SOSA = "http://www.w3.org/ns/sosa/"
-GEO = "http://www.opengis.net/ont/geosparql#"
-EX = "http://example.org/unjbg/"
+SOSA = "http://www.w3.org/ns/sosa/" # SOSA (Sensor, Observation, Sample, and Actuation) estandar de la W3C
+GEO = "http://www.opengis.net/ont/geosparql#" # GeoSPARQL estandar de la OGC  (Open Geospatial Consortium) para representar datos espaciales en la Web Semántica.
+EX = "http://example.org/unjbg/" # prefijo para recursos para el proyecto
