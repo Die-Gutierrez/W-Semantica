@@ -12,14 +12,14 @@ app = FastAPI(title="Geo-Semantic IoT API", version="1.0.0")
 
 # Integrar Scalar para la documentación interactiva
 # pyrefly: ignore [missing-import]
-from scalar_fastapi import get_scalar_api_reference
+from scalar_fastapi import get_scalar_api_reference, Theme
 
 @app.get("/scalar", include_in_schema=False)
 def get_scalar_documentation():
     return get_scalar_api_reference(
         openapi_url=app.openapi_url,
         title=app.title,
-        theme="deepSpace",
+        theme=Theme.DEEP_SPACE,
     )
 
 @app.get("/")
