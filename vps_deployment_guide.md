@@ -15,7 +15,7 @@ Hay **4 servicios en total** corriendo en segundo plano:
 * **`fuseki.service`**: El motor del Triplestore (Apache Jena Fuseki) en el puerto `3030`.
 * **`iot-subscriber.service`** (Módulo 1): El receptor de datos MQTT que graba en SQLite.
 * **`iot-etl.service`** (Módulo 2): El cargador semántico incremental que sube RDF a Fuseki.
-* **`iot-api.service`** (Módulo 3): La API FastAPI en el puerto `8000` con Swagger integrado.
+* **`iot-api.service`** (Módulo 3): La API FastAPI en el puerto `8000` con Swagger y Scalar integrados.
 
 ---
 
@@ -473,10 +473,10 @@ El flag `-f` (follow) te permite "engancharte" a la terminal de salida del módu
 
 ## ❓ Preguntas Frecuentes (FAQ)
 
-### ¿Cómo sé si mi proyecto ya tiene Swagger configurado?
-**¡Ya está configurado!** FastAPI autogenera de forma interactiva la documentación de Swagger. Una vez que tu API esté activa en el VPS, puedes ingresar a:
-`http://TU_IP_VPS:8000/docs`
-Allí verás el panel interactivo de Swagger UI para probar los endpoints en vivo.
+### ¿Cómo accedo a las consolas de documentación (Swagger y Scalar)?
+Tu API FastAPI autogenera de forma interactiva dos interfaces modernas de documentación para probar tus endpoints en vivo. Una vez que tu API esté activa en el VPS, puedes ingresar a:
+1. **Swagger UI**: `http://TU_IP_VPS:8000/docs`
+2. **Scalar UI (Recomendado/Moderno)**: `http://TU_IP_VPS:8000/scalar` (interfaz visual de última generación tipo Scramble + Scalar con autogeneración de clientes en varios lenguajes).
 
 ### ¿Puedo recibir datos de múltiples sensores físicos distintos en este VPS?
 **Sí, el sistema es multitenant nativo.**
