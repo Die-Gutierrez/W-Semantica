@@ -1,0 +1,51 @@
+INSERT INTO "public"."profiles" ("id", "email", "full_name", "role", "created_at", "updated_at") VALUES (
+'142c3f4e-2498-4101-aca1-77b8fcec0241', 'policia1@mail.com', 'Policia 1', 'POLICIAL', '2026-07-06 19:57:49.912766+00', '2026-07-06 19:58:20.647934+00'), ('4a8d07a1-aefc-4df1-9040-c2fa4088cbdd', 'policia2@mail.com', 'Policia 2', 'POLICIAL', '2026-07-06 19:58:11.275711+00', '2026-07-06 19:58:20.647934+00'), ('f98b28d2-ae29-47b2-b168-bd186373f2fb', 'ciudadano2@mail.com', 'Ciudadano 2', 'CIUDADANO', '2026-07-06 19:57:31.117391+00', '2026-07-06 19:58:20.647934+00'), ('fea4661b-a3b5-4d5b-a83e-4952c5fd66c1', 'ciudadano1@mail.com', 'ciudadano1@mail.com', 'CIUDADANO', '2026-07-06 19:57:08.027385+00', '2026-07-06 21:02:07.427239+00');
+
+INSERT INTO "public"."reports" 
+("id", "user_id", "report_type", "address", "reference", "latitude", "longitude", "description", "reported_at", "updated_at") VALUES (
+'22e8a460-5931-4b56-b163-decc3e574a04', 'fea4661b-a3b5-4d5b-a83e-4952c5fd66c1', 'INCENDIO', 'Calle José Gabriel Aguilar Mz.351 - Lt.11, Asoc la Union, Tacna', 'Asoc la Union', -17.9733831, -70.2313855, 'Sirena #1 activada', '2026-07-06 22:58:53.085754+00', '2026-07-06 22:58:53.085754+00'), ('35f35fc7-188f-46e0-92d6-29e048452412', 'fea4661b-a3b5-4d5b-a83e-4952c5fd66c1', 'OTRO', 'Calle Huancane Mz.351 - Lt.10, Asoc la Union, Tacna', 'Asoc la Union', -17.9733746, -70.2314333, 'Sirena #2 activada', '2026-07-06 22:54:44.990471+00', '2026-07-06 22:54:44.990471+00'), ('75e540de-030a-4121-858b-03bca8440a0f', 'fea4661b-a3b5-4d5b-a83e-4952c5fd66c1', 'ACCIDENTE', 'Calle Huancane Mz.351 - Lt.10, Asoc la Union, Tacna', 'Asoc la Union', -17.9733852, -70.2314143, 'Reporte creado desde la app', '2026-07-06 20:48:50.968595+00', '2026-07-06 20:48:50.968595+00'), ('f917021c-4d5e-42e9-9c15-76ef994e59d6', 'fea4661b-a3b5-4d5b-a83e-4952c5fd66c1', 'ASALTO', 'Calle Huancane Mz.351 - Lt.10, Asoc la Union, Tacna', 'Asoc la Union', -17.9733743, -70.2314297, 'Reporte creado desde la app', '2026-07-06 21:02:36.273582+00', '2026-07-06 21:02:36.273582+00');
+
+
+reports:
+{
+  "id": "uuid",
+  "user_id": "uuid",
+  "report_type": "ASALTO",
+  "address": "Calle ...",
+  "reference": "Asoc la Union",
+  "latitude": -17.9733,
+  "longitude": -70.2314,
+  "description": "Reporte creado desde la app",
+  "reported_at": "2026-07-06T22:58:53Z",
+  "updated_at": "2026-07-06T22:58:53Z",
+}
+
+profiles:
+{
+  "id": "uuid",
+  "email": "policia1@mail.com",
+  "full_name": "Policia 1",
+  "role": "POLICIAL"
+}
+
+create table reports (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references profiles(id) on delete restrict,
+  report_type not null,
+  address text not null,
+  reference text,
+  latitude double precision not null,
+  longitude double precision not null,
+  description text,
+  reported_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+);
+
+create table profiles (
+  id uuid primary key,
+  email text unique not null,
+  full_name text,
+  role text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
