@@ -19,6 +19,7 @@ def get_scalar_documentation():
     return get_scalar_api_reference(
         openapi_url=app.openapi_url,
         title=app.title,
+        theme="deepSpace",
     )
 
 @app.get("/")
