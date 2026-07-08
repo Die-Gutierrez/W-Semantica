@@ -1,6 +1,6 @@
 # Módulo 1: Ingestión
 paho-mqtt==1.6.1
-SQLAlchemy==2.0.25
+SQLAlchemy==2.0.51
 
 # Módulo 2: Semántica
 rdflib==7.0.0
