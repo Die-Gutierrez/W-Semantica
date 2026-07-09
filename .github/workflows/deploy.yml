@@ -25,7 +25,7 @@ jobs:
             # Actualizar dependencias de python si hay cambios
             source .venv/bin/activate
             pip install -r requirements.txt
-            # Reiniciar servicios para cargar los cambios de código
-            systemctl restart iot-subscriber.service iot-etl.service iot-api.service
-            # Mostrar estado para verificar que todo levantó correctamente
-            systemctl status iot-subscriber.service iot-etl.service iot-api.service --no-pager
+            # Reiniciar la aplicación completa usando PM2 (inicia si no está corriendo)
+            pm2 restart iot-proyecto || pm2 start run_all.py --name "iot-proyecto" --interpreter .venv/bin/python
+            # Mostrar estado actual de los procesos gestionados
+            pm2 status

@@ -6,16 +6,10 @@ Esta guía está diseñada específicamente para desplegar tu proyecto en un VPS
 
 ## 🗂️ Resumen de la Arquitectura en Producción
 
-En lugar de iniciar manualmente los scripts usando `run_all.py` (lo cual es genial para desarrollo local), en el servidor de producción utilizaremos **systemd** de Linux. Esto garantiza que todos tus servicios:
-1. Se ejecuten en segundo plano sin bloquear tu terminal.
-2. Se inicien automáticamente si el servidor VPS se reinicia.
-3. Se reinicien automáticamente si sufren algún fallo.
-
-Hay **4 servicios en total** corriendo en segundo plano:
-* **`fuseki.service`**: El motor del Triplestore (Apache Jena Fuseki) en el puerto `3030`.
-* **`iot-subscriber.service`** (Módulo 1): El receptor de datos MQTT que graba en SQLite.
-* **`iot-etl.service`** (Módulo 2): El cargador semántico incremental que sube RDF a Fuseki.
-* **`iot-api.service`** (Módulo 3): La API FastAPI en el puerto `8000` con Swagger y Scalar integrados.
+Para mantener el despliegue lo más simple, ágil y fácil de administrar (ideal para entornos de desarrollo y proyectos académicos), utilizaremos una arquitectura simplificada:
+1. **`fuseki.service`**: El motor del Triplestore (Apache Jena Fuseki) se ejecutará como un servicio nativo de **systemd** de Linux en el puerto `3030` (ya que es una aplicación externa de Java).
+2. **`run_all.py`**: En lugar de configurar tres servicios independientes para el suscriptor, el ETL y la API, utilizaremos tu script integrador `run_all.py`. 
+3. **PM2 o Tmux**: Administraremos `run_all.py` en segundo plano utilizando **PM2** (Process Manager 2) o **Tmux** (Multiplexor de Terminales). Esto asegura que todo el sistema de Python corra en segundo plano, se reinicie ante fallos y continúe activo al desconectarte del SSH, de forma muy sencilla.
 
 ---
 
@@ -195,10 +189,10 @@ jobs:
             # Actualizar dependencias de python si hay cambios
             source .venv/bin/activate
             pip install -r requirements.txt
-            # Reiniciar servicios para cargar los cambios de código
-            systemctl restart iot-subscriber.service iot-etl.service iot-api.service
+            # Reiniciar la aplicación completa usando PM2 (la inicia si no estaba corriendo)
+            pm2 restart iot-proyecto || pm2 start run_all.py --name "iot-proyecto" --interpreter .venv/bin/python
             # Mostrar estado para verificar que todo levantó correctamente
-            systemctl status iot-subscriber.service iot-etl.service iot-api.service --no-pager
+            pm2 status
 ```
 
 ---
@@ -282,106 +276,84 @@ curl -u admin:admin -X POST http://localhost:3030/$/datasets \
   --data "dbType=tdb2"
 ```
 
----
+### 💡 ¿Cómo vaciar o eliminar la base de datos de Fuseki en el futuro?
 
-## ⚡ Fase 7: Configurar los Módulos del Proyecto como Servicios
+* **Vaciar todas las mediciones (manteniendo la base de datos)**:
+  ```bash
+  curl -u admin:admin -X POST http://localhost:3030/iot_sensores/update \
+    --data "update=CLEAR ALL"
+  ```
 
-Crearemos servicios del sistema para los 3 módulos del proyecto. Al estar usando root, todas las rutas de trabajo y el ejecutable del entorno virtual apuntarán exactamente a `/root/W-Semantica`.
+* **Eliminar la base de datos por completo**:
+  ```bash
+  curl -u admin:admin -X DELETE http://localhost:3030/$/datasets/iot_sensores
+  ```
 
-### 1. Servicio para el Suscriptor MQTT (Módulo 1)
-```bash
-nano /etc/systemd/system/iot-subscriber.service
-```
-Pega lo siguiente:
-```ini
-[Unit]
-Description=IoT MQTT Subscriber (Modulo 1)
-After=network.target mosquitto.service
-
-[Service]
-Type=simple
-WorkingDirectory=/root/W-Semantica
-ExecStart=/root/W-Semantica/.venv/bin/python -u modulo1_ingestion/subscriber.py
-Restart=always
-RestartSec=5
-StandardOutput=journal
-StandardError=journal
-
-[Install]
-WantedBy=multi-user.target
-```
-
-### 2. Servicio para el ETL Mapper Semántico (Módulo 2)
-```bash
-nano /etc/systemd/system/iot-etl.service
-```
-Pega lo siguiente:
-```ini
-[Unit]
-Description=IoT ETL Mapper Semantico (Modulo 2)
-After=network.target fuseki.service
-
-[Service]
-Type=simple
-WorkingDirectory=/root/W-Semantica
-ExecStart=/root/W-Semantica/.venv/bin/python -u modulo2_semantica/etl_mapper.py
-Restart=always
-RestartSec=5
-StandardOutput=journal
-StandardError=journal
-
-[Install]
-WantedBy=multi-user.target
-```
-
-### 3. Servicio para la API GeoJSON (Módulo 3)
-```bash
-nano /etc/systemd/system/iot-api.service
-```
-Pega lo siguiente:
-```ini
-[Unit]
-Description=IoT FastAPI Service (Modulo 3)
-After=network.target fuseki.service
-
-[Service]
-Type=simple
-WorkingDirectory=/root/W-Semantica
-ExecStart=/root/W-Semantica/.venv/bin/python -u -m uvicorn modulo3_api.main:app --host 0.0.0.0 --port 8000
-Restart=always
-RestartSec=5
-StandardOutput=journal
-StandardError=journal
-
-[Install]
-WantedBy=multi-user.target
-```
+* **Eliminar y volver a crear limpia (Todo en uno)**:
+  ```bash
+  curl -u admin:admin -X DELETE http://localhost:3030/$/datasets/iot_sensores && \
+  curl -u admin:admin -X POST http://localhost:3030/$/datasets --data "dbName=iot_sensores" --data "dbType=tdb2"
+  ```
 
 ---
 
-## 🚀 Fase 8: Activar y Probar Todo el Sistema
+---
 
-### 1. Cargar e Iniciar todos los Servicios
-```bash
-sudo systemctl daemon-reload
+## ⚡ Fase 7: Ejecución Simplificada del Proyecto (`run_all.py`)
 
-# Habilitar servicios para que arranquen en el inicio del VPS
-sudo systemctl enable iot-subscriber
-sudo systemctl enable iot-etl
-sudo systemctl enable iot-api
+Para no lidiar con múltiples archivos de servicios de systemd individuales, usaremos `run_all.py` administrado por **PM2** o **Tmux**.
 
-# Iniciar los servicios
-sudo systemctl start iot-subscriber
-sudo systemctl start iot-etl
-sudo systemctl start iot-api
-```
+### Opción A: Despliegue con PM2 (Recomendado y Automatizado)
+PM2 es un gestor de procesos que mantendrá la ejecución en segundo plano y la levantará automáticamente ante caídas.
 
-### 2. Verificar el Estado de cada Servicio
-```bash
-sudo systemctl status iot-subscriber
-sudo systemctl status iot-etl
-sudo systemctl status iot-api
-```
+1. **Instalar Node.js y PM2 en el VPS** (requerido una sola vez):
+   ```bash
+   sudo apt update
+   sudo apt install -y nodejs npm
+   sudo npm install -g pm2
+   ```
+
+2. **Iniciar la aplicación con PM2**:
+   Ubicado en la carpeta `/root/W-Semantica`:
+   ```bash
+   pm2 start run_all.py --name "iot-proyecto" --interpreter .venv/bin/python
+   ```
+
+3. **Verificar estado de PM2**:
+   ```bash
+   pm2 status
+   ```
+
+---
+
+### Opción B: Despliegue manual con Tmux (Alternativa sin dependencias Node.js)
+Tmux crea una sesión virtual de terminal que sigue corriendo aunque cierres el SSH.
+
+1. **Instalar Tmux**:
+   ```bash
+   sudo apt install -y tmux
+   ```
+
+2. **Crear una sesión de terminal llamada `iot`**:
+   ```bash
+   tmux new -s iot
+   ```
+   *(Esto te meterá a una nueva consola).*
+
+3. **Ejecutar el orquestador**:
+   ```bash
+   source .venv/bin/activate
+   python run_all.py
+   ```
+
+4. **Salir de la pantalla virtual (Desconectarte)**:
+   Presiona en tu teclado **`Ctrl + B`** y luego suelta y presiona la tecla **`D`** (de *detach*).
+   *Tu terminal volverá al VPS normal. Ya puedes desconectarte de SSH y todo seguirá activo.*
+
+5. **Volver a entrar para ver la simulación/logs**:
+   ```bash
+   tmux attach -t iot
+   ```
 
 ---
 
@@ -430,44 +402,33 @@ Dato guardado en la base de datos.
 
 ---
 
-## 📊 Fase 10: Monitoreo y Administración de Consolas de Servicios
+## 📊 Fase 10: Monitoreo y Administración de Consolas
 
-Dado que los servicios se ejecutan de manera asíncrona y en segundo plano usando `systemd`, no verás una terminal abierta para cada uno. Todo lo que imprimen mediante `print()`, logs o errores es interceptado por el diario del sistema (`journald`).
+### 1. Si usas PM2
+* **Ver logs unificados en tiempo real**:
+  ```bash
+  pm2 logs iot-proyecto
+  ```
+  *(Puedes presionar `Ctrl + C` para salir de la vista de logs sin apagar el programa).*
+* **Ver estado de consumo de memoria y CPU**:
+  ```bash
+  pm2 status
+  ```
+* **Reiniciar el proyecto completo**:
+  ```bash
+  pm2 restart iot-proyecto
+  ```
+* **Detener la aplicación**:
+  ```bash
+  pm2 stop iot-proyecto
+  ```
 
-### 1. Ver la Consola de Logs en Tiempo Real (Modo Monitoreo)
-El flag `-f` (follow) te permite "engancharte" a la terminal de salida del módulo y ver qué está pasando conforme ocurren los eventos.
-
-*   **Consola de la Ingestión MQTT (Módulo 1)**:
-    ```bash
-    journalctl -u iot-subscriber.service -f
-    ```
-*   **Consola del ETL Semántico (Módulo 2)**:
-    ```bash
-    journalctl -u iot-etl.service -f
-    ```
-*   **Consola de la API FastAPI y Swagger (Módulo 3)**:
-    ```bash
-    journalctl -u iot-api.service -f
-    ```
-*   **Consola del Triplestore Fuseki**:
-    ```bash
-    journalctl -u fuseki.service -f
-    ```
-*(Para salir de cualquiera de estas vistas y volver a la terminal de comandos de root, presiona **`Ctrl + C`**).*
-
-### 2. Comandos de Consola Avanzados para logs
-*   **Ver las últimas 100 líneas del log de un servicio sin quedar bloqueado**:
-    ```bash
-    journalctl -u iot-subscriber.service -n 100 --no-pager
-    ```
-*   **Buscar errores críticos de ejecución en la API**:
-    ```bash
-    journalctl -u iot-api.service -p err
-    ```
-*   **Ver lo ocurrido durante las últimas 3 horas**:
-    ```bash
-    journalctl -u iot-etl.service --since "3 hours ago"
-    ```
+### 2. Si usas Tmux
+* **Entrar a la sesión de terminal activa**:
+  ```bash
+  tmux attach -t iot
+  ```
+  *(Una vez dentro, verás la salida en vivo de `run_all.py`. Puedes detenerlo presionando `Ctrl + C` o desconectarte presionando `Ctrl + B` y luego `D`).*
 
 ---
 
@@ -485,26 +446,19 @@ Tu API FastAPI autogenera de forma interactiva dos interfaces modernas de docume
 * La base de datos guarda automáticamente el `sensor_id` que el dispositivo envía en su payload JSON, lo que permite diferenciar lecturas de distintos dispositivos sin cambios en el código.
 
 ### ¿Cómo detengo de forma temporal o reinicio un servicio manualmente?
-Puedes usar la herramienta `systemctl` (con `sudo` si no eres root) con los siguientes comandos (ejemplo con la API):
-*   **Detener**: `sudo systemctl stop iot-api`
-*   **Iniciar**: `sudo systemctl start iot-api`
-*   **Reiniciar**: `sudo systemctl restart iot-api`
-
-> [!IMPORTANT]
-> **¿Qué hacer si `systemctl stop` se queda colgado o tarda en responder?**
-> Si la API (`iot-api`) o el ETL (`iot-etl`) están esperando una respuesta de red de Fuseki y no tienen un timeout establecido, el proceso se bloqueará de forma síncrona. Systemd intentará apagarlo con `SIGTERM`, pero al estar bloqueado, systemd esperará **90 segundos** por defecto antes de matarlo a la fuerza (`SIGKILL`). 
-> 
-> Si no quieres esperar los 90 segundos, puedes detener el servicio e inmediatamente matar el proceso huérfano a mano:
-> ```bash
-> # 1. Detener el servicio (se quedará esperando en segundo plano)
-> sudo systemctl stop iot-api
-> 
-> # 2. Matar el proceso de python/uvicorn inmediatamente
-> sudo kill -9 $(pgrep -f modulo3_api)
-> ```
+* **Si usas PM2**: Ejecuta `pm2 stop iot-proyecto` / `pm2 restart iot-proyecto`.
+* **Si usas Tmux**: Entra con `tmux attach -t iot` y presiona `Ctrl + C`.
 
 ### ¿Qué pasa si el servidor VPS se apaga o se reinicia accidentalmente?
-Gracias a la directiva `WantedBy=multi-user.target` en nuestros archivos de servicio systemd y a que ejecutamos `systemctl enable <nombre>`, el sistema operativo Ubuntu se encargará de levantar automáticamente Mosquitto, Fuseki, el Suscriptor MQTT, el ETL y la API FastAPI en el orden correcto apenas se inicie el sistema, garantizando disponibilidad 24/7 sin intervención manual.
+* **Apache Jena Fuseki**: Se iniciará automáticamente gracias a systemd (`sudo systemctl enable fuseki`).
+* **Módulos de Python**: 
+  * **Si usas PM2**: Puedes indicarle a PM2 que guarde la configuración actual para que inicie sola al reiniciar el VPS con:
+    ```bash
+    pm2 startup
+    # (Sigue las instrucciones de salida del comando)
+    pm2 save
+    ```
+  * **Si usas Tmux**: Deberás volver a iniciar la sesión con `tmux new -s iot` y correr `python run_all.py` de nuevo.
 
 ### ¿Dónde puedo ver la base de datos relacional y dónde la semántica?
 1. **SQLite (`iot_data.db`)**: Es un archivo de base de datos local guardado en `/root/W-Semantica/iot_data.db`.
