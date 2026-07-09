@@ -21,7 +21,7 @@ class SensorData(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     sensor_id = Column(String(50), nullable=False)
-    zona = Column(String(10), nullable=False) # X, Y, Z
+    zona = Column(String(100), nullable=False) # X, Y, Z (Aumentado a 100 para soportar nombres descriptivos)
     valor = Column(Float, nullable=False)
     timestamp = Column(DateTime, default=datetime.datetime.utcnow)
     latitud = Column(Float, nullable=True)

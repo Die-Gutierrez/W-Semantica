@@ -3,6 +3,7 @@ from fastapi import FastAPI, HTTPException
 import requests
 import sys
 import os
+import urllib.parse
 
 # Añadir el path raíz
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
@@ -66,10 +67,10 @@ def get_sensors_points(id: int = 10):
             
             history.append({
                 "observacion": row["obs"]["value"],
-                "sensor_id": row["sensor"]["value"].split("/")[-1],
+                "sensor_id": urllib.parse.unquote(row["sensor"]["value"].split("/")[-1]),
                 "valor": float(row["valor"]["value"]),
                 "timestamp": row["timestamp"]["value"],
-                "zona": row["zona"]["value"],
+                "zona": urllib.parse.unquote(row["zona"]["value"]),
                 "coordenadas": {
                     "latitud": lat,
                     "longitud": lon
@@ -122,10 +123,10 @@ def get_sensors_history():
             
             history.append({
                 "observacion": row["obs"]["value"],
-                "sensor_id": row["sensor"]["value"].split("/")[-1],
+                "sensor_id": urllib.parse.unquote(row["sensor"]["value"].split("/")[-1]),
                 "valor": float(row["valor"]["value"]),
                 "timestamp": row["timestamp"]["value"],
-                "zona": row["zona"]["value"],
+                "zona": urllib.parse.unquote(row["zona"]["value"]),
                 "coordenadas": {
                     "latitud": lat,
                     "longitud": lon
@@ -141,6 +142,7 @@ def get_sensors_history():
     description="Filtra las observaciones para un sensor específico y devuelve los datos en formato JSON. Soporta un parámetro numérico 'limit' para restringir los resultados (por defecto 10)."
 )
 def get_sensor_history_by_id(sensor_id: str, limit: int = 10):
+    safe_sensor_id = urllib.parse.quote(sensor_id)
     # Consulta SPARQL para obtener historial filtrado por sensor_id y limitado
     query = f"""
     PREFIX sosa: <http://www.w3.org/ns/sosa/>
@@ -157,7 +159,7 @@ def get_sensor_history_by_id(sensor_id: str, limit: int = 10):
       ?obs geo:hasGeometry ?geom .
       ?geom geo:asWKT ?wkt .
       BIND(STRAFTER(STR(?feature), "zona/") AS ?zona) .
-      FILTER(STRENDS(STR(?sensor), CONCAT("/", "{sensor_id}")))
+      FILTER(STRENDS(STR(?sensor), CONCAT("/", "{safe_sensor_id}")))
     }}
     ORDER BY DESC(?timestamp)
     LIMIT {limit}
@@ -182,7 +184,7 @@ def get_sensor_history_by_id(sensor_id: str, limit: int = 10):
                 "observacion": row["obs"]["value"],
                 "valor": float(row["valor"]["value"]),
                 "timestamp": row["timestamp"]["value"],
-                "zona": row["zona"]["value"],
+                "zona": urllib.parse.unquote(row["zona"]["value"]),
                 "coordenadas": {
                     "latitud": lat,
                     "longitud": lon
@@ -210,8 +212,8 @@ def get_sensor_observation_by_id(observation_id: int):
                                      sosa:madeBySensor ?sensor ;
                                      sosa:hasSimpleResult ?valor ;
                                      sosa:resultTime ?timestamp ;
-                                     sosa:hasFeatureOfInterest ?feature .
-      ?obs geo:hasGeometry ?geom .
+                                     sosa:hasFeatureOfInterest ?feature ;
+                                     geo:hasGeometry ?geom .
       ?geom geo:asWKT ?wkt .
       BIND(STRAFTER(STR(?feature), "zona/") AS ?zona) .
     }}
@@ -238,10 +240,10 @@ def get_sensor_observation_by_id(observation_id: int):
         
         return {
             "observacion": f"http://example.org/unjbg/observation/{observation_id}",
-            "sensor_id": row["sensor"]["value"].split("/")[-1],
+            "sensor_id": urllib.parse.unquote(row["sensor"]["value"].split("/")[-1]),
             "valor": float(row["valor"]["value"]),
             "timestamp": row["timestamp"]["value"],
-            "zona": row["zona"]["value"],
+            "zona": urllib.parse.unquote(row["zona"]["value"]),
             "coordenadas": {
                 "latitud": lat,
                 "longitud": lon

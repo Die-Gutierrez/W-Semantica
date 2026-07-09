@@ -77,3 +77,6 @@ venv.bak/
 # OS files
 .DS_Store
 Thumbs.db
+
+# ETL State (local progress pointer)
+etl_last_id.txt

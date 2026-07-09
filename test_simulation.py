@@ -48,9 +48,9 @@ def simular_esp32(broker_host):
     
     # Datos de ejemplo para las zonas X, Y, Z de Tacna/Localidad (coordenadas base)
     zonas = [
-        {"id": "ESP32_01", "zona": "X", "lat": -18.013, "lon": -70.251},
-        {"id": "ESP32_02", "zona": "Y", "lat": -18.015, "lon": -70.255},
-        {"id": "ESP32_03", "zona": "Z", "lat": -18.010, "lon": -70.248},
+        {"id": "ESP32 01", "zona": "A fredy", "lat": -18.013, "lon": -70.251},
+        {"id": "ESP32 02", "zona": "B fredef", "lat": -18.015, "lon": -70.255},
+        {"id": "ESP32 03", "zona": "C daniel", "lat": -18.010, "lon": -70.248},
     ]
 
     for _ in range(5):

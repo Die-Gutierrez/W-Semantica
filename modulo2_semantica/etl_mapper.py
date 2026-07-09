@@ -11,12 +11,25 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from common.config import FUSEKI_UPDATE_URL, GEO, EX, SOSA as SOSA_URI, BASE_DIR
 from modulo1_ingestion.database import SessionLocal, SensorData
 
+import urllib.parse
+
 # Definir Namespaces adicionales
 GEO_NS = Namespace(GEO)
 EX_NS = Namespace(EX)
 
+# pyrefly: ignore [missing-import]
+from sqlalchemy import func
+
 def map_to_rdf(last_id=0):
     db = SessionLocal()
+    
+    # Auto-sanación: si la base de datos se recreó o vació, el ID máximo será menor que last_id.
+    # En ese caso, reseteamos el cursor a 0 automáticamente.
+    max_id_val = db.query(func.max(SensorData.id)).scalar() or 0
+    if max_id_val < last_id:
+        print(f"Advertencia: Base de datos reseteada. Ajustando último ID procesado de {last_id} a 0.")
+        last_id = 0
+
     # Filtrar para obtener solo registros nuevos (id > last_id) ordenados ascendentemente
     datos = db.query(SensorData).filter(SensorData.id > last_id).order_by(SensorData.id.asc()).all()
 
@@ -30,10 +43,14 @@ def map_to_rdf(last_id=0):
     g.bind("ex", EX_NS)
 
     for dato in datos:
+        # Codificar URIs para evitar que caracteres especiales o espacios (como 'C daniel') rompan la serialización RDF
+        safe_sensor_id = urllib.parse.quote(dato.sensor_id)
+        safe_zona = urllib.parse.quote(dato.zona)
+
         # Definir URIs
-        sensor_uri = EX_NS[f"sensor/{dato.sensor_id}"]
+        sensor_uri = EX_NS[f"sensor/{safe_sensor_id}"]
         obs_uri = EX_NS[f"observation/{dato.id}"]
-        feature_uri = EX_NS[f"zona/{dato.zona}"]
+        feature_uri = EX_NS[f"zona/{safe_zona}"]
 
         # 1. El Sensor
         g.add((sensor_uri, RDF.type, SOSA.Sensor))
