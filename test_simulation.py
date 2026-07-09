@@ -32,7 +32,7 @@ def obtener_host():
     
     while True:
         try:
-            opcion = input("Selecciona el destino [1-3]: ").strip()
+            opcion = input("Selecciona el destino [1-2]: ").strip()
             if opcion == "1":
                 return "localhost"
             elif opcion == "2":

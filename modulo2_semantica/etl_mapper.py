@@ -8,7 +8,7 @@ import os
 
 # Añadir el path raíz
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from common.config import FUSEKI_UPDATE_URL, GEO, EX, SOSA as SOSA_URI
+from common.config import FUSEKI_UPDATE_URL, GEO, EX, SOSA as SOSA_URI, BASE_DIR
 from modulo1_ingestion.database import SessionLocal, SensorData
 
 # Definir Namespaces adicionales
@@ -61,13 +61,16 @@ def map_to_rdf(last_id=0):
         response = requests.post(
             FUSEKI_UPDATE_URL,
             data={'update': update_query},
-            headers={'Content-Type': 'application/x-www-form-urlencoded'}
+            headers={'Content-Type': 'application/x-www-form-urlencoded'},
+            timeout=10
         )
         if response.status_code == 200 or response.status_code == 204:
             new_last_id = datos[-1].id
             print(f"Éxito: Se enviaron {len(datos)} nuevos registros a Fuseki (Último ID: {new_last_id}).")
         else:
             print(f"Error en Fuseki (Código {response.status_code}): {response.text}")
+    except requests.exceptions.Timeout:
+        print("Error: Tiempo de espera agotado al conectar con Fuseki (Timeout).")
     except Exception as e:
         print(f"No se pudo conectar con Fuseki: {e}")
 
@@ -82,15 +85,33 @@ if __name__ == "__main__":
     print("==================================================")
     print("Iniciando monitoreo de base de datos SQLite...")
     
-    # Arrancamos desde 0 en la primera iteración para asegurar que todo dato
-    # existente en SQLite sea cargado a Fuseki al arrancar el servicio.
+    # Ruta del archivo para persistir el progreso del ETL
+    LAST_ID_FILE = os.path.join(BASE_DIR, "etl_last_id.txt")
     last_processed_id = 0
     
+    # Intentar cargar el último ID procesado al iniciar
+    if os.path.exists(LAST_ID_FILE):
+        try:
+            with open(LAST_ID_FILE, "r") as f:
+                last_processed_id = int(f.read().strip())
+            print(f"Progreso cargado. Continuando desde el ID de SQLite: {last_processed_id}")
+        except Exception as e:
+            print(f"No se pudo leer {LAST_ID_FILE}, iniciando desde 0. Detalle: {e}")
+    else:
+        print("No se encontró archivo de progreso previo, iniciando desde ID 0.")
+        
     try:
         while True:
             new_id = map_to_rdf(last_processed_id)
             if new_id != last_processed_id:
                 last_processed_id = new_id
+                # Guardar progreso en el archivo
+                try:
+                    with open(LAST_ID_FILE, "w") as f:
+                        f.write(str(last_processed_id))
+                except Exception as e:
+                    print(f"Error al persistir progreso en {LAST_ID_FILE}: {e}")
             time.sleep(3) # Polling cada 3 segundos
     except KeyboardInterrupt:
         print("\nServicio ETL de Monitoreo continuo finalizado correctamente.")
+

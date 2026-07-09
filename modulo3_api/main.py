@@ -51,7 +51,8 @@ def get_sensors_points(id: int = 10):
     try:
         response = requests.get(
             FUSEKI_QUERY_URL,
-            params={'query': query, 'format': 'json'}
+            params={'query': query, 'format': 'json'},
+            timeout=10
         )
         if response.status_code != 200:
             raise HTTPException(status_code=500, detail="Error consultando el Triplestore")
@@ -106,7 +107,8 @@ def get_sensors_history():
     try:
         response = requests.get(
             FUSEKI_QUERY_URL,
-            params={'query': query, 'format': 'json'}
+            params={'query': query, 'format': 'json'},
+            timeout=10
         )
         if response.status_code != 200:
             raise HTTPException(status_code=500, detail="Error consultando el Triplestore")
@@ -163,7 +165,8 @@ def get_sensor_history_by_id(sensor_id: str, limit: int = 10):
     try:
         response = requests.get(
             FUSEKI_QUERY_URL,
-            params={'query': query, 'format': 'json'}
+            params={'query': query, 'format': 'json'},
+            timeout=10
         )
         if response.status_code != 200:
             raise HTTPException(status_code=500, detail="Error consultando el Triplestore")
@@ -216,7 +219,8 @@ def get_sensor_observation_by_id(observation_id: int):
     try:
         response = requests.get(
             FUSEKI_QUERY_URL,
-            params={'query': query, 'format': 'json'}
+            params={'query': query, 'format': 'json'},
+            timeout=10
         )
         if response.status_code != 200:
             raise HTTPException(status_code=500, detail="Error consultando el Triplestore")

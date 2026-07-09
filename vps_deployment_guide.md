@@ -269,9 +269,9 @@ WantedBy=multi-user.target
 
 ### 3. Iniciar el Servicio de Fuseki
 ```bash
-systemctl daemon-reload
-systemctl enable fuseki
-systemctl start fuseki
+sudo systemctl daemon-reload
+sudo systemctl enable fuseki
+sudo systemctl start fuseki
 ```
 
 ### 4. Crear el Dataset en Fuseki
@@ -363,24 +363,24 @@ WantedBy=multi-user.target
 
 ### 1. Cargar e Iniciar todos los Servicios
 ```bash
-systemctl daemon-reload
+sudo systemctl daemon-reload
 
 # Habilitar servicios para que arranquen en el inicio del VPS
-systemctl enable iot-subscriber
-systemctl enable iot-etl
-systemctl enable iot-api
+sudo systemctl enable iot-subscriber
+sudo systemctl enable iot-etl
+sudo systemctl enable iot-api
 
 # Iniciar los servicios
-systemctl start iot-subscriber
-systemctl start iot-etl
-systemctl start iot-api
+sudo systemctl start iot-subscriber
+sudo systemctl start iot-etl
+sudo systemctl start iot-api
 ```
 
 ### 2. Verificar el Estado de cada Servicio
 ```bash
-systemctl status iot-subscriber
-systemctl status iot-etl
-systemctl status iot-api
+sudo systemctl status iot-subscriber
+sudo systemctl status iot-etl
+sudo systemctl status iot-api
 ```
 
 ---
@@ -485,10 +485,23 @@ Tu API FastAPI autogenera de forma interactiva dos interfaces modernas de docume
 * La base de datos guarda automáticamente el `sensor_id` que el dispositivo envía en su payload JSON, lo que permite diferenciar lecturas de distintos dispositivos sin cambios en el código.
 
 ### ¿Cómo detengo de forma temporal o reinicio un servicio manualmente?
-Como root, puedes usar la herramienta `systemctl` con los siguientes comandos (ejemplo con la API):
-*   **Detener**: `systemctl stop iot-api`
-*   **Iniciar**: `systemctl start iot-api`
-*   **Reiniciar**: `systemctl restart iot-api`
+Puedes usar la herramienta `systemctl` (con `sudo` si no eres root) con los siguientes comandos (ejemplo con la API):
+*   **Detener**: `sudo systemctl stop iot-api`
+*   **Iniciar**: `sudo systemctl start iot-api`
+*   **Reiniciar**: `sudo systemctl restart iot-api`
+
+> [!IMPORTANT]
+> **¿Qué hacer si `systemctl stop` se queda colgado o tarda en responder?**
+> Si la API (`iot-api`) o el ETL (`iot-etl`) están esperando una respuesta de red de Fuseki y no tienen un timeout establecido, el proceso se bloqueará de forma síncrona. Systemd intentará apagarlo con `SIGTERM`, pero al estar bloqueado, systemd esperará **90 segundos** por defecto antes de matarlo a la fuerza (`SIGKILL`). 
+> 
+> Si no quieres esperar los 90 segundos, puedes detener el servicio e inmediatamente matar el proceso huérfano a mano:
+> ```bash
+> # 1. Detener el servicio (se quedará esperando en segundo plano)
+> sudo systemctl stop iot-api
+> 
+> # 2. Matar el proceso de python/uvicorn inmediatamente
+> sudo kill -9 $(pgrep -f modulo3_api)
+> ```
 
 ### ¿Qué pasa si el servidor VPS se apaga o se reinicia accidentalmente?
 Gracias a la directiva `WantedBy=multi-user.target` en nuestros archivos de servicio systemd y a que ejecutamos `systemctl enable <nombre>`, el sistema operativo Ubuntu se encargará de levantar automáticamente Mosquitto, Fuseki, el Suscriptor MQTT, el ETL y la API FastAPI en el orden correcto apenas se inicie el sistema, garantizando disponibilidad 24/7 sin intervención manual.
