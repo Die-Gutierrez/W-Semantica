@@ -41,7 +41,7 @@ def get_sensors_points(id: int = 10):
            sosa:hasSimpleResult ?valor ;
            sosa:resultTime ?timestamp ;
            sosa:hasFeatureOfInterest ?feature .
-      ?sensor geo:hasGeometry ?geom .
+      ?obs geo:hasGeometry ?geom .
       ?geom geo:asWKT ?wkt .
       BIND(STRAFTER(STR(?feature), "zona/") AS ?zona) .
     }}
@@ -98,7 +98,7 @@ def get_sensors_history():
            sosa:hasSimpleResult ?valor ;
            sosa:resultTime ?timestamp ;
            sosa:hasFeatureOfInterest ?feature .
-      ?sensor geo:hasGeometry ?geom .
+      ?obs geo:hasGeometry ?geom .
       ?geom geo:asWKT ?wkt .
       BIND(STRAFTER(STR(?feature), "zona/") AS ?zona) .
     }
@@ -154,7 +154,7 @@ def get_sensor_history_by_id(sensor_id: str, limit: int = 10):
            sosa:hasSimpleResult ?valor ;
            sosa:resultTime ?timestamp ;
            sosa:hasFeatureOfInterest ?feature .
-      ?sensor geo:hasGeometry ?geom .
+      ?obs geo:hasGeometry ?geom .
       ?geom geo:asWKT ?wkt .
       BIND(STRAFTER(STR(?feature), "zona/") AS ?zona) .
       FILTER(STRENDS(STR(?sensor), CONCAT("/", "{sensor_id}")))
@@ -211,7 +211,7 @@ def get_sensor_observation_by_id(observation_id: int):
                                      sosa:hasSimpleResult ?valor ;
                                      sosa:resultTime ?timestamp ;
                                      sosa:hasFeatureOfInterest ?feature .
-      ?sensor geo:hasGeometry ?geom .
+      ?obs geo:hasGeometry ?geom .
       ?geom geo:asWKT ?wkt .
       BIND(STRAFTER(STR(?feature), "zona/") AS ?zona) .
     }}

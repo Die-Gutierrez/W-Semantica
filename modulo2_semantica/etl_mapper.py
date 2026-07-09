@@ -47,10 +47,10 @@ def map_to_rdf(last_id=0):
         # 3. Ubicación (GeoSPARQL)
         if dato.latitud and dato.longitud:
             point_wkt = Literal(f"POINT({dato.longitud} {dato.latitud})", datatype=GEO_NS.wktLiteral)
-            # Asociamos la geometría al Sensor de forma estática en lugar de a la Zona
-            g.add((sensor_uri, RDF.type, GEO_NS.Feature))
-            g.add((sensor_uri, GEO_NS.hasGeometry, EX_NS[f"geometry/sensor_{dato.sensor_id}"]))
-            g.add((EX_NS[f"geometry/sensor_{dato.sensor_id}"], GEO_NS.asWKT, point_wkt))
+            # Asociamos la geometría a la Observación de forma dinámica
+            g.add((obs_uri, RDF.type, GEO_NS.Feature))
+            g.add((obs_uri, GEO_NS.hasGeometry, EX_NS[f"geometry/obs_{dato.id}"]))
+            g.add((EX_NS[f"geometry/obs_{dato.id}"], GEO_NS.asWKT, point_wkt))
             g.add((obs_uri, SOSA.hasFeatureOfInterest, feature_uri))
 
     # Serializar a N-Triples para Fuseki (es más liviano y seguro para SPARQL INSERT DATA)
