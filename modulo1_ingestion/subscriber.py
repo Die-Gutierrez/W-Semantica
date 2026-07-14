@@ -4,6 +4,7 @@ import json
 import sys
 import os
 import time
+import datetime
 
 # Añadir el path raíz para importar common y database
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
@@ -12,6 +13,9 @@ from modulo1_ingestion.database import SessionLocal, SensorData, init_db
 
 # Guardar la última lectura de cada sensor para evitar duplicidad por ráfagas de red o reconexiones
 LAST_READINGS = {}  # { sensor_id: {"valor": float, "timestamp": float} }
+
+# Timestamp hardcoded que emite el ESP32 cuando el GPS no tiene señal
+TIMESTAMP_GPS_FALLBACK = "2026-07-11T16:40:00.000000"
 
 def on_connect(client, userdata, flags, rc):
     if rc == 0:
@@ -40,18 +44,42 @@ def on_message(client, userdata, msg):
         # Actualizar la última lectura registrada
         LAST_READINGS[sensor_id] = {"valor": valor, "timestamp": ahora}
 
+        # --- Extracción de coordenadas (formato ESP32 real: sub-objeto "coordenadas") ---
+        # Soporta también el formato legacy del simulador (latitud/longitud en raíz)
+        coordenadas = payload.get("coordenadas", {})
+        latitud = coordenadas.get("latitud") if coordenadas else payload.get("latitud")
+        longitud = coordenadas.get("longitud") if coordenadas else payload.get("longitud")
+
+        # Si el GPS no tiene señal, el ESP32 envía 0.0, 0.0 → guardamos None
+        if latitud == 0.0 and longitud == 0.0:
+            latitud = None
+            longitud = None
+            print("Advertencia: GPS sin señal (0.0, 0.0) — coordenadas guardadas como None.")
+
+        # --- Parseo del timestamp ISO 8601 del ESP32 ---
+        # El ESP32 usa "2026-07-11T16:40:00.000000" como fallback cuando el GPS no tiene señal.
+        # En ese caso usamos None para que SQLAlchemy registre la hora real de ingesta (utcnow).
+        ts_str = payload.get("timestamp")
+        timestamp = None
+        if ts_str and ts_str != TIMESTAMP_GPS_FALLBACK:
+            try:
+                timestamp = datetime.datetime.fromisoformat(ts_str)
+            except ValueError:
+                print(f"Advertencia: timestamp inválido '{ts_str}', se usará la hora de ingesta.")
+
         db = SessionLocal()
         nuevo_dato = SensorData(
             sensor_id=sensor_id,
             zona=payload.get("zona"),
             valor=valor,
-            latitud=payload.get("latitud"),
-            longitud=payload.get("longitud")
+            timestamp=timestamp,   # None → SQLAlchemy usa default=utcnow
+            latitud=latitud,
+            longitud=longitud
         )
         db.add(nuevo_dato)
         db.commit()
         db.close()
-        print("Dato guardado en la base de datos.")
+        print(f"[OK] Dato guardado - sensor: {sensor_id} | valor: {valor} cm | GPS: {'OK' if latitud else 'sin senal'}")
     except Exception as e:
         print(f"Error procesando mensaje: {e}")
 
@@ -72,4 +100,3 @@ def start_subscriber():
 
 if __name__ == "__main__":
     start_subscriber()
-
