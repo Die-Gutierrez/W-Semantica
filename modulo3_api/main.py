@@ -24,6 +24,76 @@ def get_scalar_documentation():
     )
 
 @app.get(
+    "/api/v1/sensors",
+    summary="Obtener todos los sensores existentes (JSON)",
+    description="Devuelve una lista con todos los sensores registrados en el Triplestore, incluyendo su zona y sus coordenadas geográficas correspondientes."
+)
+def get_sensors():
+    # Consulta SPARQL para obtener todos los sensores únicos, sus zonas y coordenadas
+    query = """
+    PREFIX sosa: <http://www.w3.org/ns/sosa/>
+    PREFIX geo: <http://www.opengis.net/ont/geosparql#>
+    PREFIX ex: <http://example.org/unjbg/>
+
+    SELECT ?sensor (SAMPLE(?zona_str) AS ?zona) (SAMPLE(?wkt_str) AS ?wkt)
+    WHERE {
+      ?sensor a sosa:Sensor .
+      OPTIONAL {
+        ?obs sosa:madeBySensor ?sensor .
+        OPTIONAL { 
+          ?obs sosa:hasFeatureOfInterest ?feature .
+          BIND(STRAFTER(STR(?feature), "zona/") AS ?zona_str)
+        }
+        OPTIONAL { 
+          ?obs geo:hasGeometry ?geom .
+          ?geom geo:asWKT ?wkt_str
+        }
+      }
+    }
+    GROUP BY ?sensor
+    """
+    try:
+        response = requests.get(
+            FUSEKI_QUERY_URL,
+            params={'query': query, 'format': 'json'},
+            timeout=10
+        )
+        if response.status_code != 200:
+            raise HTTPException(status_code=500, detail="Error consultando el Triplestore")
+
+        results = response.json()
+        sensors = []
+        for row in results["results"]["bindings"]:
+            sensor_uri = row["sensor"]["value"]
+            sensor_id = urllib.parse.unquote(sensor_uri.split("/")[-1])
+            
+            zona_raw = row.get("zona", {}).get("value")
+            zona = urllib.parse.unquote(zona_raw) if zona_raw else None
+            
+            wkt = row.get("wkt", {}).get("value")
+            coordenadas = None
+            if wkt:
+                try:
+                    coords_str = wkt.replace("POINT(", "").replace(")", "")
+                    lon, lat = map(float, coords_str.split())
+                    coordenadas = {
+                        "latitud": round(lat, 6),
+                        "longitud": round(lon, 6)
+                    }
+                except Exception:
+                    pass
+            
+            sensors.append({
+                "sensor_id": sensor_id,
+                "sensor_uri": sensor_uri,
+                "zona": zona,
+                "coordenadas": coordenadas
+            })
+        return sensors
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get(
     "/api/v1/sensors/points",
     summary="Obtener puntos registrados con límite (JSON)",
     description="Devuelve los puntos registrados en formato JSON. Permite configurar cuántos elementos devolver usando el parámetro de consulta 'id' (por defecto 10)."
