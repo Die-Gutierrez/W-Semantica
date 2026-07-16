@@ -9,14 +9,15 @@ import argparse
 import datetime
 from datetime import timezone
 # pyrefly: ignore [missing-import]
-import paho.mqtt.publish as publish
+import paho.mqtt.client as mqtt
 
 # Importar configuración MQTT de ser posible
 try:
-    from common.config import MQTT_TOPIC as CONFIG_MQTT_TOPIC
+    from common.config import MQTT_TOPIC as CONFIG_MQTT_TOPIC, MQTT_PORT
     MQTT_TOPIC = CONFIG_MQTT_TOPIC.replace("/#", "/movimiento")
 except ImportError:
     MQTT_TOPIC = "unjbg/sensores/movimiento"
+    MQTT_PORT = 1883
 
 OBSERVACION_BASE_URI = "http://example.org/unjbg/observation"
 
@@ -162,11 +163,17 @@ def publicar_historicos(records, broker_host):
     total = len(records)
     success_count = 0
     
-    # Tiempo de espera extremadamente corto (0.01s) para evitar saturar el broker MQTT 
-    # pero avanzar rápido
-    sleep_time = 0.01
+    # Crear cliente MQTT con una ID fija
+    client = mqtt.Client(client_id="vps_iot_historical_uploader", clean_session=True)
     
     try:
+        # Conectar una sola vez al broker en el puerto configurado
+        client.connect(broker_host, MQTT_PORT, 60)
+        client.loop_start()
+        
+        # Esperar a que se complete la conexión
+        time.sleep(0.5)
+        
         for idx, r in enumerate(records, start=1):
             # Obtener timestamp actual al momento de publicar (igual que en test_simulation.py)
             ts_now = datetime.datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%f")
@@ -183,19 +190,26 @@ def publicar_historicos(records, broker_host):
                 }
             }
             
-            publish.single(MQTT_TOPIC, payload=json.dumps(payload), hostname=broker_host)
+            # Publicar usando la conexión persistente
+            client.publish(MQTT_TOPIC, payload=json.dumps(payload), qos=0)
             success_count += 1
             
             if idx % 100 == 0 or idx == total:
                 print(f"Progreso: [{idx}/{total}] publicados con éxito.")
                 
-            if sleep_time > 0:
-                time.sleep(sleep_time)
+            # Pequeño sleep para regular la velocidad
+            time.sleep(0.001)
+            
+        print("Finalizando envíos. Esperando vaciado del buffer de red...")
+        time.sleep(2.0)
                 
     except KeyboardInterrupt:
         print("\nCarga interrumpida por el usuario.")
     except Exception as e:
         print(f"\nError publicando mensaje MQTT: {e}")
+    finally:
+        client.loop_stop()
+        client.disconnect()
         
     print(f"\n[OK] Simulación de históricos completada. {success_count} mensajes enviados.")
 
